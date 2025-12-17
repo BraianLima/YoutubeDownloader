@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using YoutubeExplode.Videos;
 
 namespace YoutubeDownloader
 {
@@ -21,12 +22,13 @@ namespace YoutubeDownloader
         {
             var tcs = new TaskCompletionSource<string>();
             var outputCompleto = new StringBuilder();
+            string ytDlpPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"yt-dlp.exe");
 
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = @"C:\youtube-dl\yt-dlp.exe",
+                    FileName = ytDlpPath,
                     Arguments = argumentos,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
@@ -122,7 +124,32 @@ namespace YoutubeDownloader
                 progressBar1.Value = 0;
 
                 string url = txt_url.Text;
-                string pastaDestino = @"C:\Downloads";
+                if (string.IsNullOrEmpty(url))
+                {
+                    MessageBox.Show(
+                        $"Informe o link do vídeo",
+                        "Concluído",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                    return;
+                }
+
+                VideoId? videoId = VideoId.TryParse(url);
+                if (videoId == null)
+                {
+                    MessageBox.Show(
+                        $"Informe um link válido",
+                        "Concluído",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                    return;
+                }
+
+                string urlVideo = "https://youtube.com/watch?v=" + videoId.Value;
+
+                string pastaDestino = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
 
                 string argumentos =
                     $"-f \"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]\" " +
@@ -130,7 +157,7 @@ namespace YoutubeDownloader
                     $"--audio-format aac " +
                     $"--restrict-filenames " +
                     $"-o \"{pastaDestino}\\%(title)s.%(ext)s\" " +
-                    $"\"{url}\"";
+                    $"\"{urlVideo}\"";
 
                 string output = await ExecutarYtDlpAsync(argumentos);
                 string nomeArquivo = ExtrairNomeArquivo(output);
@@ -166,14 +193,38 @@ namespace YoutubeDownloader
                 progressBar1.Value = 0;
 
                 string url = txt_url.Text;
-                string pastaDestino = @"C:\Downloads";
+                if (string.IsNullOrEmpty(url))
+                {
+                    MessageBox.Show(
+                        $"Informe o link do vídeo",
+                        "Concluído",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                    return;
+                }
+
+                VideoId? videoId = VideoId.TryParse(url);
+                if (videoId == null)
+                {
+                    MessageBox.Show(
+                        $"Informe um link válido",
+                        "Concluído",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                    return;
+                }
+
+                string urlVideo = "https://youtube.com/watch?v=" + videoId.Value;
+
+                string pastaDestino = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
 
                 string argumentos =
                     $"-x --audio-format mp3 " +
                     $"--restrict-filenames " +
                     $"-o \"{pastaDestino}\\%(title)s.%(ext)s\" " +
-                    $"\"{url}\"";
-
+                    $"\"{urlVideo}\"";
 
                 string output = await ExecutarYtDlpAsync(argumentos);
                 string nomeArquivo = ExtrairNomeArquivo(output);

@@ -45,19 +45,19 @@
             // 
             btn_audio.Location = new Point(46, 99);
             btn_audio.Name = "btn_audio";
-            btn_audio.Size = new Size(125, 29);
+            btn_audio.Size = new Size(155, 29);
             btn_audio.TabIndex = 1;
-            btn_audio.Text = "Aúdio";
+            btn_audio.Text = "Baixar como Áudio";
             btn_audio.UseVisualStyleBackColor = true;
             btn_audio.Click += btn_audio_Click;
             // 
             // btn_video
             // 
-            btn_video.Location = new Point(323, 99);
+            btn_video.Location = new Point(274, 99);
             btn_video.Name = "btn_video";
-            btn_video.Size = new Size(122, 29);
+            btn_video.Size = new Size(171, 29);
             btn_video.TabIndex = 2;
-            btn_video.Text = "Vídeo";
+            btn_video.Text = "Baixar como Vídeo";
             btn_video.UseVisualStyleBackColor = true;
             btn_video.Click += btn_video_Click;
             // 

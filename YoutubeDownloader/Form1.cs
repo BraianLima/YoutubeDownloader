@@ -23,7 +23,14 @@ namespace YoutubeDownloader
             var tcs = new TaskCompletionSource<string>();
             var outputCompleto = new StringBuilder();
             string ytDlpPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"yt-dlp.exe");
+            if (!File.Exists(ytDlpPath))
+            {
+                throw new FileNotFoundException(
+                    "yt-dlp.exe não encontrado em: " + ytDlpPath
+                );
+            }
 
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -33,7 +40,8 @@ namespace YoutubeDownloader
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
-                    CreateNoWindow = true
+                    CreateNoWindow = true,
+                    WorkingDirectory = basePath
                 },
                 EnableRaisingEvents = true
             };

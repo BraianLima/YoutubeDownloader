@@ -1,0 +1,6 @@
+# FFmpeg
+ffmpeg/
+*.exe
+*.dll
+/ffmpeg/
+/YoutubeDownloader/ffmpeg/

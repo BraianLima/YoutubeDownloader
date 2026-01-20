@@ -256,7 +256,7 @@ namespace YoutubeDownloader
                     video.Title.Split(Path.GetInvalidFileNameChars())
                 );
 
-                string caminhoTemp = Path.Combine(pastaDestino, $"{nomeBase}.webm");
+                string caminhoAudio = Path.Combine(pastaDestino, $"{nomeBase}.webm");
                 string caminhoMp3 = Path.Combine(pastaDestino, $"{nomeBase}.mp3");
 
                 var progress = new Progress<double>(p =>
@@ -272,17 +272,12 @@ namespace YoutubeDownloader
 
                 await youtube.Videos.Streams.DownloadAsync(
                     audioStreamInfo,
-                    caminhoTemp,
+                    caminhoAudio,
                     progress
                 );
 
-                // Converter para MP3 com FFmpeg
-                ConverterParaMp3(caminhoTemp, caminhoMp3);
-
-                File.Delete(caminhoTemp);
-
                 MessageBox.Show(
-                    $"Download finalizado com sucesso!\n\nArquivo:\n{Path.GetFileName(caminhoMp3)}",
+                    $"Download finalizado com sucesso!\n\nArquivo:\n{Path.GetFileName(caminhoAudio)}",
                     "Concluído",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information
@@ -320,37 +315,6 @@ namespace YoutubeDownloader
                 }
             }
             catch { }
-        }
-
-        private void ConverterParaMp3(string entrada, string saida)
-        {
-            string ffmpegExe = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "ffmpeg",
-                "ffmpeg.exe"
-            );
-
-            if (!File.Exists(ffmpegExe))
-                throw new FileNotFoundException("ffmpeg.exe não encontrado.");
-
-            var process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = ffmpegExe,
-                    Arguments = $"-y -i \"{entrada}\" -vn -ab 192k \"{saida}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-
-            process.Start();
-            process.WaitForExit();
-
-            if (process.ExitCode != 0)
-                throw new Exception("Erro ao converter áudio para MP3.");
         }
 
     }

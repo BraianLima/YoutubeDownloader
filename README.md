@@ -2,7 +2,7 @@
 
 ---
 
-## 🚀 COMO RODAR LOCALMENTE PARA TESTES
+## 🚀 COMO RODAR LOCALMENTE EM AMBIENTE DE DESENVOLVIMENTO 
 
 ### PASSO 1
 Baixar o **youtube-dlp.exe** e deixar como **yt-dlp.exe** na pasta raiz do projeto

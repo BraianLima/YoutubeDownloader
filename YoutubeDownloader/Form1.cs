@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Text;
+using YoutubeExplode;
 using YoutubeExplode.Videos;
+using YoutubeExplode.Videos.Streams;
 
 namespace YoutubeDownloader
 {
@@ -232,21 +234,55 @@ namespace YoutubeDownloader
                     return;
                 }
 
-                string urlVideo = "https://youtube.com/watch?v=" + videoId.Value;
+                var youtube = new YoutubeClient();
 
-                string pastaDestino = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                var video = await youtube.Videos.GetAsync(videoId.Value);
+                var streamManifest = await youtube.Videos.Streams.GetManifestAsync(videoId.Value);
 
-                string argumentos =
-                    $"-x --audio-format mp3 " +
-                    $"--restrict-filenames " +
-                    $"-o \"{pastaDestino}\\%(title)s.%(ext)s\" " +
-                    $"\"{urlVideo}\"";
+                // Melhor stream de áudio disponível
+                var audioStreamInfo = streamManifest
+                    .GetAudioOnlyStreams()
+                    .GetWithHighestBitrate();
 
-                string output = await ExecutarYtDlpAsync(argumentos);
-                string nomeArquivo = ExtrairNomeArquivo(output);
+                if (audioStreamInfo == null)
+                    throw new Exception("Nenhum stream de áudio encontrado.");
+
+                string pastaDestino = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Downloads"
+                );
+
+                string nomeBase = string.Concat(
+                    video.Title.Split(Path.GetInvalidFileNameChars())
+                );
+
+                string caminhoTemp = Path.Combine(pastaDestino, $"{nomeBase}.webm");
+                string caminhoMp3 = Path.Combine(pastaDestino, $"{nomeBase}.mp3");
+
+                var progress = new Progress<double>(p =>
+                {
+                    int valor = (int)(p * 100);
+                    valor = Math.Max(0, Math.Min(100, valor));
+
+                    progressBar1.Invoke(() =>
+                    {
+                        progressBar1.Value = valor;
+                    });
+                });
+
+                await youtube.Videos.Streams.DownloadAsync(
+                    audioStreamInfo,
+                    caminhoTemp,
+                    progress
+                );
+
+                // Converter para MP3 com FFmpeg
+                ConverterParaMp3(caminhoTemp, caminhoMp3);
+
+                File.Delete(caminhoTemp);
 
                 MessageBox.Show(
-                    $"Download finalizado com sucesso!\n\nArquivo:\n{nomeArquivo}",
+                    $"Download finalizado com sucesso!\n\nArquivo:\n{Path.GetFileName(caminhoMp3)}",
                     "Concluído",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information
@@ -286,6 +322,36 @@ namespace YoutubeDownloader
             catch { }
         }
 
+        private void ConverterParaMp3(string entrada, string saida)
+        {
+            string ffmpegExe = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "ffmpeg",
+                "ffmpeg.exe"
+            );
+
+            if (!File.Exists(ffmpegExe))
+                throw new FileNotFoundException("ffmpeg.exe não encontrado.");
+
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = ffmpegExe,
+                    Arguments = $"-y -i \"{entrada}\" -vn -ab 192k \"{saida}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+                throw new Exception("Erro ao converter áudio para MP3.");
+        }
 
     }
 }

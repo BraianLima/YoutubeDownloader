@@ -205,100 +205,100 @@ namespace YoutubeDownloader
 
         private async void btn_audio_Click(object sender, EventArgs e)
         {
+            string caminhoTemp = ""; // Para limpar depois
             try
             {
                 BloquearControles(true);
                 progressBar1.Value = 0;
 
                 string url = txt_url.Text;
-                if (string.IsNullOrEmpty(url))
-                {
-                    MessageBox.Show(
-                        $"Informe o link do vídeo",
-                        "Concluído",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
-                    return;
-                }
-
                 VideoId? videoId = VideoId.TryParse(url);
                 if (videoId == null)
                 {
-                    MessageBox.Show(
-                        $"Informe um link válido",
-                        "Concluído",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
+                    MessageBox.Show("Informe um link válido");
                     return;
                 }
 
                 var youtube = new YoutubeClient();
-
                 var video = await youtube.Videos.GetAsync(videoId.Value);
                 var streamManifest = await youtube.Videos.Streams.GetManifestAsync(videoId.Value);
+                var audioStreamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 
-                // Melhor stream de áudio disponível
-                var audioStreamInfo = streamManifest
-                    .GetAudioOnlyStreams()
-                    .GetWithHighestBitrate();
+                if (audioStreamInfo == null) throw new Exception("Áudio não encontrado.");
 
-                if (audioStreamInfo == null)
-                    throw new Exception("Nenhum stream de áudio encontrado.");
+                string pastaDestino = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
 
-                string pastaDestino = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    "Downloads"
-                );
+                // Remove caracteres inválidos do título
+                string nomeBase = string.Concat(video.Title.Split(Path.GetInvalidFileNameChars()));
 
-                string nomeBase = string.Concat(
-                    video.Title.Split(Path.GetInvalidFileNameChars())
-                );
-
-                string caminhoAudio = Path.Combine(pastaDestino, $"{nomeBase}.webm");
+                // Definimos o caminho temporário (WebM/M4A) e o final (MP3)
+                caminhoTemp = Path.Combine(pastaDestino, $"{nomeBase}.tmp");
                 string caminhoMp3 = Path.Combine(pastaDestino, $"{nomeBase}.mp3");
 
-                var progress = new Progress<double>(p =>
-                {
-                    int valor = (int)(p * 100);
-                    valor = Math.Max(0, Math.Min(100, valor));
-
-                    progressBar1.Invoke(() =>
-                    {
-                        progressBar1.Value = valor;
-                    });
+                // 1. Download do Stream original
+                var progress = new Progress<double>(p => {
+                    this.Invoke(() => progressBar1.Value = (int)(p * 100));
                 });
 
-                await youtube.Videos.Streams.DownloadAsync(
-                    audioStreamInfo,
-                    caminhoAudio,
-                    progress
-                );
+                await youtube.Videos.Streams.DownloadAsync(audioStreamInfo, caminhoTemp, progress);
+
+                // 2. Conversão para MP3
+                // Avisar o usuário ou mudar label se tiver (opcional)
+                await ConverterParaMp3Async(caminhoTemp, caminhoMp3);
 
                 MessageBox.Show(
-                    $"Download finalizado com sucesso!\n\nArquivo:\n{Path.GetFileName(caminhoAudio)}",
-                    "Concluído",
+                    $"Download e conversão concluídos!\n\nArquivo: {nomeBase}.mp3",
+                    "Sucesso",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information
                 );
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    "Erro ao baixar o áudio:\n\n" + ex.Message,
-                    "Erro",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error
-                );
+                MessageBox.Show("Erro: " + ex.Message);
             }
             finally
             {
+                // 3. Limpeza: Apaga o arquivo temporário se ele existir
+                if (!string.IsNullOrEmpty(caminhoTemp) && File.Exists(caminhoTemp))
+                {
+                    try { File.Delete(caminhoTemp); } catch { }
+                }
+
                 BloquearControles(false);
                 progressBar1.Value = 0;
             }
         }
 
+        private async Task ConverterParaMp3Async(string caminhoEntrada, string caminhoSaida)
+        {
+            string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg", "ffmpeg.exe");
+
+            if (!File.Exists(ffmpegPath))
+                throw new FileNotFoundException("FFmpeg não encontrado para conversão.");
+
+            // Argumentos: -i (entrada) -q:a 0 (melhor qualidade VBR) -y (sobrescrever se existir)
+            string argumentos = $"-i \"{caminhoEntrada}\" -q:a 0 -y \"{caminhoSaida}\"";
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = ffmpegPath,
+                Arguments = argumentos,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardError = true // FFmpeg envia logs pelo Error
+            };
+
+            using (var process = Process.Start(startInfo))
+            {
+                await process.WaitForExitAsync();
+                if (process.ExitCode != 0)
+                {
+                    var erro = await process.StandardError.ReadToEndAsync();
+                    throw new Exception($"Erro na conversão: {erro}");
+                }
+            }
+        }
         private void ApagarArquivosTemporarios(string pastaDestino)
         {
             try
